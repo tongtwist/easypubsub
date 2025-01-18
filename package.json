@@ -1,0 +1,14 @@
+{
+  "name": "easypubsub",
+  "module": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "ts:watch": "tsc --watch --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
