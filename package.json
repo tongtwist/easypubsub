@@ -1,14 +1,29 @@
 {
   "name": "easypubsub",
+  "version": "0.0.1",
+  "author": {
+    "name": "Tongtwist",
+    "url": "https://github.com/tongtwist"
+  },
   "module": "src/index.ts",
   "type": "module",
   "scripts": {
+    "build": "bun run build:js && bun run build:types",
+    "build:js": "bun build src/index.ts --outdir ./build --minify",
+    "build:types": "tsc src/index.ts --strict --skipLibCheck --declaration --emitDeclarationOnly --outDir ./build",
+    "publish": " bun test && bun run build && bun publish",
     "ts:watch": "tsc --watch --noEmit"
   },
   "devDependencies": {
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
+    "@types/bun": "latest",
     "typescript": "^5.7.3"
-  }
+  },
+  "keywords": [
+    "pubsub",
+    "publisher",
+    "subscriber",
+    "zero-dependency",
+    "topic-filtering",
+    "content-filtering"
+  ]
 }
