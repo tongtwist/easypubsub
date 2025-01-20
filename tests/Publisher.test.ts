@@ -1,6 +1,7 @@
 import { describe, test, expect, mock } from "bun:test";
 import { Publisher } from "../src/Publisher";
 import type { ConsumeFunction } from "../src/Subscription";
+import type { FilteringOptions } from "../src/FilteringOptions";
 
 describe("Publisher", () => {
   describe("creation", () => {
@@ -59,8 +60,14 @@ describe("Publisher", () => {
       const consume1 = mock((msg: string) => {});
       const consume2 = mock((msg: string) => {});
 
-      publisher.subscribe(consume1, "topic1");
-      publisher.subscribe(consume2, "topic2");
+      publisher.subscribe(consume1, {
+        topicPattern: "topic1",
+        strictTopicFiltering: true,
+      });
+      publisher.subscribe(consume2, {
+        topicPattern: "topic2",
+        strictTopicFiltering: true,
+      });
 
       publisher.getEmitter()("test message", "topic1");
 
@@ -73,16 +80,14 @@ describe("Publisher", () => {
       const consume1 = mock((msg: unknown) => {});
       const consume2 = mock((msg: unknown) => {});
 
-      publisher.subscribe(
-        consume1,
-        undefined,
-        (msg) => typeof msg === "string"
-      );
-      publisher.subscribe(
-        consume2,
-        undefined,
-        (msg) => typeof msg === "number"
-      );
+      publisher.subscribe(consume1, {
+        strictTopicFiltering: false,
+        contentFilter: (msg) => typeof msg === "string",
+      });
+      publisher.subscribe(consume2, {
+        strictTopicFiltering: false,
+        contentFilter: (msg) => typeof msg === "number",
+      });
 
       const emit = publisher.getEmitter();
       emit("test message");
@@ -113,7 +118,10 @@ describe("Publisher", () => {
       const publisher = Publisher.create<string>();
       const consume = mock((msg: string) => {});
 
-      publisher.subscribe(consume, "topic");
+      publisher.subscribe(consume, {
+        topicPattern: "topic",
+        strictTopicFiltering: true,
+      });
       const emit = publisher.getEmitter();
 
       emit("test message", "other-topic");
@@ -193,11 +201,10 @@ describe("Publisher", () => {
       const publisher = Publisher.create<TestMessage>();
       const consume = mock((msg: TestMessage) => {});
 
-      publisher.subscribe(
-        consume,
-        undefined,
-        (msg) => msg.type === "specific-type"
-      );
+      publisher.subscribe(consume, {
+        strictTopicFiltering: false,
+        contentFilter: (msg) => msg.type === "specific-type",
+      });
 
       const emit = publisher.getEmitter();
       emit({ type: "other-type", data: "value" });

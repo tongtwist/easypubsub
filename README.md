@@ -1,6 +1,6 @@
 # EasyPubSub
 
-A lightweight (1.6kb), zero-deps, type-safe Pub/Sub library for TypeScript with powerful filtering capabilities.
+A lightweight (< 2kb), zero-deps, type-safe Pub/Sub library for TypeScript with powerful filtering capabilities.
 
 ## Features
 
@@ -52,15 +52,12 @@ import { Publisher } from "easypubsub";
 const publisher = Publisher.create<string>();
 
 // Subscribe to specific topic
-publisher.subscribe(
-  (msg) => console.log(`User message: ${msg}`),
-  "user" // topic
-);
+publisher.subscribe((msg) => console.log(`User message: ${msg}`), "user");
 
 // Subscribe using regex pattern
 publisher.subscribe(
   (msg) => console.log(`System message: ${msg}`),
-  /^system-.*$/ // topic pattern
+  /^system-.*$/
 );
 
 const emit = publisher.getEmitter();
@@ -81,17 +78,35 @@ interface Message {
 const publisher = Publisher.create<Message>();
 
 // Filter messages based on their content
-publisher.subscribe(
-  (msg) => console.log("Error:", msg.data),
-  undefined, // no topic filtering
-  (msg) => msg.type === "error" // content filter
-);
+publisher.subscribe((msg) => console.log("Error:", msg.data), {
+  contentFilter: (msg) => msg.type === "error",
+});
 
 const emit = publisher.getEmitter();
 
 // Only error messages will be received
 emit({ type: "info", data: "System started" }); // (ignored)
 emit({ type: "error", data: "Connection failed" }); // -> "Error: Connection failed"
+```
+
+### Combined Filtering
+
+```typescript
+const publisher = Publisher.create<Message>();
+
+// Combine topic and content filtering
+publisher.subscribe((msg) => console.log("System Error:", msg.data), {
+  topicPattern: "system",
+  strictTopicFiltering: true,
+  contentFilter: (msg) => msg.type === "error",
+});
+
+const emit = publisher.getEmitter();
+
+// Only system errors will be received
+emit({ type: "error", data: "Auth failed" }, "auth"); // (ignored)
+emit({ type: "info", data: "CPU usage" }, "system"); // (ignored)
+emit({ type: "error", data: "Out of memory" }, "system"); // -> "System Error: Out of memory"
 ```
 
 ### Async Message Handling
@@ -117,15 +132,56 @@ console.log("All handlers completed");
 ### `Publisher<Msg>`
 
 - `create<Msg>()`: Creates a new publisher instance
-- `subscribe(consume, topicPattern?, contentFilter?, strictTopicFiltering?)`: Subscribes to messages
+- `subscribe(consume, filteringOptions?)`: Subscribes to messages with optional filtering
 - `getEmitter()`: Returns a function for emitting messages
 - `subscriptionsNumber`: Gets the current number of active subscriptions
 
-### Subscription Options
+### Filtering Options
 
-- `topicPattern`: String, number, or RegExp for filtering by topic
-- `contentFilter`: Function for filtering by message content
-- `strictTopicFiltering`: When true, messages without topic are rejected if topic pattern is defined
+```typescript
+type FilteringOptions<Msg> =
+  | {
+      // Pattern to match against message topics
+      topicPattern?: string | number | RegExp;
+
+      // When true, messages without topic will be rejected when topicPattern is set
+      // When false, messages without topic will be delivered regardless of topicPattern
+      // Default equals to typeof topicPattern !== "undefined"
+      strictTopicFiltering?: boolean;
+
+      // Optional function to filter messages based on their content
+      contentFilter?: (msg: Msg) => boolean;
+    }
+  | string // ... or you can just
+  | number // give a topicPattern value.
+  | RegExp; // (strictTopicFiltering=false and contentFilter=undefined)
+```
+
+#### Examples
+
+```typescript
+// Default options (no filtering)
+publisher.subscribe(consume);
+
+// Topic-only filtering
+publisher.subscribe(consume, {
+  topicPattern: "my-topic",
+  strictTopicFiltering: true,
+});
+
+// Content-only filtering
+publisher.subscribe(consume, {
+  strictTopicFiltering: false,
+  contentFilter: (msg) => typeof msg === "string",
+});
+
+// Combined filtering
+publisher.subscribe(consume, {
+  topicPattern: new RegExp("topic-.*"),
+  strictTopicFiltering: true,
+  contentFilter: (msg) => msg.length > 0,
+});
+```
 
 ## License
 

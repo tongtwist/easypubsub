@@ -1,11 +1,13 @@
 import {
   type Topic,
-  type TopicPattern,
   type ConsumeFunction,
-  type ContentFilteringFunction,
   type MaybePromise,
   Subscription,
 } from "./Subscription";
+import {
+  type FilteringCreationProps,
+  buildFilteringOptions,
+} from "./FilteringOptions";
 
 /**
  * Function to cancel a subscription.
@@ -87,27 +89,49 @@ export class Publisher<Msg> {
   }
 
   /**
-   * Registers a new subscription with optional filtering criteria.
+   * Registers a new subscription with optional filtering options.
    * Creates a new subscription with a unique numeric ID and stores it in the subscriptions map.
+   *
    * @param {ConsumeFunction<Msg>} consume - Function to handle matching messages
-   * @param {TopicPattern} [topicPattern] - Optional pattern to filter messages by topic
-   * @param {ContentFilteringFunction<Msg>} [contentFilter] - Optional function to filter messages by content
-   * @param {boolean} [strictTopicPatternFiltering=true] - If true, messages without topic will be rejected when a topicPattern is defined
-   * @returns {Unsubscribe} Function to cancel the subscription. When called, it will remove the subscription
-   * from both the publisher's map and the Subscription's static map.
+   * @param {FilteringCreationProps<Msg>} [filteringOptions] - Optional filtering configuration:
+   *   - topicPattern: Pattern to match against message topics (string, number, or RegExp)
+   *   - strictTopicFiltering: Controls how messages without topics are handled
+   *   - contentFilter: Function to filter messages based on their content
+   * @returns {Unsubscribe} Function to cancel the subscription
+   *
+   * @example
+   * // Subscribe without filtering
+   * publisher.subscribe(msg => console.log(msg));
+   *
+   * @example
+   * // Subscribe with topic filtering
+   * publisher.subscribe(msg => console.log(msg), {
+   *   topicPattern: "my-topic",
+   *   strictTopicFiltering: true
+   * });
+   *
+   * @example
+   * // Subscribe with content filtering
+   * publisher.subscribe(msg => console.log(msg), {
+   *   contentFilter: msg => typeof msg === "string"
+   * });
+   *
+   * @example
+   * // Subscribe with combined filtering
+   * publisher.subscribe(msg => console.log(msg), {
+   *   topicPattern: new RegExp("topic-.*"),
+   *   contentFilter: msg => msg.length > 0,
+   *   strictTopicFiltering: false
+   * });
+   *
+   * @see FilteringOptions for detailed filtering options documentation
    */
   subscribe(
     consume: ConsumeFunction<Msg>,
-    topicPattern?: TopicPattern,
-    contentFilter?: ContentFilteringFunction<Msg>,
-    strictTopicPatternFiltering: boolean = true
+    filteringOptions?: FilteringCreationProps<Msg>
   ): Unsubscribe {
-    const subscription = Subscription.getOrCreate(
-      consume,
-      strictTopicPatternFiltering,
-      topicPattern,
-      contentFilter
-    );
+    const opts = buildFilteringOptions<Msg>(filteringOptions);
+    const subscription = Subscription.getOrCreate(consume, opts);
     if (this.subscriptions.has(subscription)) {
       return this.subscriptions.get(subscription)!;
     }
