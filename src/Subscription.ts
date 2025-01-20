@@ -1,3 +1,5 @@
+import type { FilteringOptions } from "./FilteringOptions";
+
 /**
  * Represents a message topic. It can be either a string or a number.
  * @typedef {(string|number)} Topic
@@ -7,8 +9,16 @@ export type Topic = string | number;
 /**
  * Pattern used to filter topics.
  * Can be either an exact topic value (Topic) or a regular expression (RegExp).
- * If the pattern is a RegExp and the topic is a number, the topic is converted to a string
- * to allow matching with the regular expression.
+ * If the pattern is a RegExp and the topic is a number, the topic is converted
+ * to a string to allow matching with the regular expression.
+ * @example
+ * // Using exact topic
+ * const pattern1: TopicPattern = "my-topic";
+ * const pattern2: TopicPattern = 42;
+ *
+ * // Using RegExp
+ * const pattern3: TopicPattern = new RegExp("topic-.*");
+ *
  * @typedef {(Topic|RegExp)} TopicPattern
  */
 export type TopicPattern = Topic | RegExp;
@@ -82,10 +92,14 @@ export class Subscription<Msg = unknown> {
   private topicMatcher?: (givenTopic: Topic) => boolean;
 
   /**
-   * Creates a new subscription.
+   * Creates a new subscription with the specified filtering options.
+   * @private
+   * @param {UniqueSubscriptionKey} _key - Unique identifier for this subscription
    * @param {ConsumeFunction<Msg>} consume - Function called to consume filtered messages
-   * @param {boolean} strictTopicFiltering - If true, messages without topic will be rejected when a topicPattern is defined
-   * @param {TopicPattern} [topicPattern] - Optional pattern to filter messages by topic
+   * @param {boolean} strictTopicFiltering - Controls how messages without topics are handled:
+   *   - When true and topicPattern is set: messages without topic are rejected
+   *   - When false: messages without topic are accepted regardless of topicPattern
+   * @param {TopicPattern} [topicPattern] - Optional pattern to match against message topics
    * @param {ContentFilteringFunction<Msg>} [contentFilter] - Optional function to filter messages by content
    */
   private constructor(
@@ -148,16 +162,16 @@ export class Subscription<Msg = unknown> {
    * @template Msg - Type of messages handled by the subscription
    * @static
    * @param {ConsumeFunction<Msg>} consume - Function called to consume filtered messages
-   * @param {boolean} strictTopicFiltering - If true, messages without topic will be rejected when a topicPattern is defined
-   * @param {TopicPattern} [topicPattern] - Optional pattern to filter messages by topic
-   * @param {ContentFilteringFunction<Msg>} [contentFilter] - Optional function to filter messages by content
+   * @param {FilteringOptions<Msg>} opts - Options for filtering messages:
+   *   - topicPattern: Optional pattern to match against message topics
+   *   - strictTopicFiltering: Controls how messages without topics are handled
+   *   - contentFilter: Optional function to filter messages based on their content
    * @returns {Subscription<Msg>} An existing or new subscription instance
+   * @see FilteringOptions for detailed options documentation
    */
   static getOrCreate<Msg = unknown>(
     consume: ConsumeFunction<Msg>,
-    strictTopicFiltering: boolean,
-    topicPattern?: TopicPattern,
-    contentFilter?: ContentFilteringFunction<Msg>
+    opts: FilteringOptions<Msg>
   ): Subscription<Msg> {
     const key = ++Subscription.lastId;
     if (Subscription.uniqueSubscriptions.has(key)) {
@@ -166,9 +180,9 @@ export class Subscription<Msg = unknown> {
     const subscription = new Subscription<Msg>(
       key,
       consume,
-      strictTopicFiltering,
-      topicPattern,
-      contentFilter
+      opts.strictTopicFiltering,
+      opts.topicPattern,
+      opts.contentFilter
     );
     Subscription.uniqueSubscriptions.set(key, subscription);
     return subscription;
@@ -178,7 +192,7 @@ export class Subscription<Msg = unknown> {
    * Removes a subscription reference from the static map.
    * @template Msg - Type of messages handled by the subscription
    * @static
-   * @param {UniqueSubscriptionKey<Msg>} key - The unique key identifying the subscription to remove
+   * @param {UniqueSubscriptionKey} key - The unique key identifying the subscription to remove
    * @returns {boolean} true if a subscription was removed, false if it didn't exist
    */
   static unref(key: UniqueSubscriptionKey): boolean {
