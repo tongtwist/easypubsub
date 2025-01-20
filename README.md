@@ -1,6 +1,6 @@
 # EasyPubSub
 
-A lightweight, type-safe publish/subscribe library for TypeScript with powerful filtering capabilities.
+A lightweight, zero-deps, type-safe publish/subscribe library for TypeScript with powerful filtering capabilities.
 
 ## Features
 
