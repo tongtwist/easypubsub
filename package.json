@@ -5,6 +5,7 @@
     "name": "Tongtwist",
     "url": "https://github.com/tongtwist"
   },
+  "homepage": "https://tongtwist.github.io/easypubsub/",
   "module": "src/index.ts",
   "type": "module",
   "scripts": {
