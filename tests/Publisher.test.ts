@@ -22,6 +22,36 @@ describe("Publisher", () => {
       expect(typeof unsubscribe).toBe("function");
     });
 
+    test("should add duplicate subscriptions with identical parameters", () => {
+      const publisher = Publisher.create();
+      const consume = () => {};
+      const options = {
+        topicPattern: "topic",
+        strictTopicFiltering: true,
+      };
+
+      const unsubscribe1 = publisher.subscribe(consume, options);
+      const unsubscribe2 = publisher.subscribe(consume, options);
+      expect(publisher.subscriptionsNumber).toBe(2);
+      expect(unsubscribe1).not.toBe(unsubscribe2);
+    });
+
+    test("should remove only the specific subscription on unsubscribe when duplicates exist", () => {
+      const publisher = Publisher.create();
+      const consume = () => {};
+      const options = {
+        topicPattern: "topic",
+        strictTopicFiltering: true,
+      };
+
+      const unsubscribe1 = publisher.subscribe(consume, options);
+      publisher.subscribe(consume, options);
+      expect(publisher.subscriptionsNumber).toBe(2);
+
+      unsubscribe1();
+      expect(publisher.subscriptionsNumber).toBe(1);
+    });
+
     test("should remove subscription on unsubscribe", () => {
       const publisher = Publisher.create();
       const consume = () => {};
@@ -97,6 +127,24 @@ describe("Publisher", () => {
       expect(consume1).toHaveBeenCalledWith("test message");
       expect(consume2).toHaveBeenCalledTimes(1);
       expect(consume2).toHaveBeenCalledWith(42);
+    });
+
+    test("should emit message to all duplicate subscriptions", () => {
+      const publisher = Publisher.create<string>();
+      const consume = mock((msg: string) => {});
+      const options = {
+        topicPattern: "topic",
+        strictTopicFiltering: true,
+      };
+
+      publisher.subscribe(consume, options);
+      publisher.subscribe(consume, options);
+
+      publisher.getEmitter()("test message", "topic");
+
+      expect(consume).toHaveBeenCalledTimes(2);
+      expect(consume).toHaveBeenNthCalledWith(1, "test message");
+      expect(consume).toHaveBeenNthCalledWith(2, "test message");
     });
   });
 

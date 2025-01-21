@@ -50,40 +50,11 @@ export type ContentFilteringFunction<Msg = unknown> = (msg: Msg) => boolean;
 export type MaybePromise<T> = T | Promise<T>;
 
 /**
- * Numeric type representing a unique key for subscription identification.
- * Each subscription gets a unique incremental ID generated from lastId counter.
- * This key is used to track and manage unique subscriptions across the application.
- * @typedef {number} UniqueSubscriptionKey
- */
-export type UniqueSubscriptionKey = number;
-
-/**
  * Class representing a subscription to messages.
  * Handles the checks used in message filtering by topic and/or content.
  * @template Msg - Type of messages handled by the subscription
  */
 export class Subscription<Msg = unknown> {
-  /**
-   * Static map storing unique subscriptions to prevent duplicates.
-   * The key is a unique incremental ID, and the value is the subscription instance.
-   * @private
-   * @static
-   * @type {Map<UniqueSubscriptionKey, Subscription<any>>}
-   */
-  private static readonly uniqueSubscriptions: Map<
-    UniqueSubscriptionKey,
-    Subscription<any>
-  > = new Map();
-
-  /**
-   * Counter used to generate unique subscription IDs.
-   * Incremented each time a new subscription is created.
-   * @private
-   * @static
-   * @type {UniqueSubscriptionKey}
-   */
-  private static lastId: UniqueSubscriptionKey = -1;
-
   /**
    * Matching function for topic filtering.
    * @private
@@ -94,7 +65,6 @@ export class Subscription<Msg = unknown> {
   /**
    * Creates a new subscription with the specified filtering options.
    * @private
-   * @param {UniqueSubscriptionKey} _key - Unique identifier for this subscription
    * @param {ConsumeFunction<Msg>} consume - Function called to consume filtered messages
    * @param {boolean} strictTopicFiltering - Controls how messages without topics are handled:
    *   - When true and topicPattern is set: messages without topic are rejected
@@ -103,7 +73,6 @@ export class Subscription<Msg = unknown> {
    * @param {ContentFilteringFunction<Msg>} [contentFilter] - Optional function to filter messages by content
    */
   private constructor(
-    private readonly _key: UniqueSubscriptionKey,
     public readonly consume: ConsumeFunction<Msg>,
     public readonly strictTopicFiltering: boolean,
     public readonly topicPattern?: TopicPattern,
@@ -116,16 +85,6 @@ export class Subscription<Msg = unknown> {
           : (givenTopic: Topic) =>
               givenTopic.toString().match(topicPattern) !== null;
     }
-  }
-
-  /**
-   * Gets the unique numeric ID identifying this subscription.
-   * This ID is used internally to track and manage unique subscriptions,
-   * and can be used with the unref method to remove the subscription from the static map.
-   * @returns {UniqueSubscriptionKey} The unique numeric ID for this subscription
-   */
-  get key(): UniqueSubscriptionKey {
-    return this._key;
   }
 
   /**
@@ -157,8 +116,7 @@ export class Subscription<Msg = unknown> {
   }
 
   /**
-   * Gets an existing subscription matching the parameters or creates a new one.
-   * This method ensures that identical subscriptions are reused rather than duplicated.
+   * Create a new subscription.
    * @template Msg - Type of messages handled by the subscription
    * @static
    * @param {ConsumeFunction<Msg>} consume - Function called to consume filtered messages
@@ -166,40 +124,18 @@ export class Subscription<Msg = unknown> {
    *   - topicPattern: Optional pattern to match against message topics
    *   - strictTopicFiltering: Controls how messages without topics are handled
    *   - contentFilter: Optional function to filter messages based on their content
-   * @returns {Subscription<Msg>} An existing or new subscription instance
+   * @returns {Subscription<Msg>} A new subscription instance
    * @see FilteringOptions for detailed options documentation
    */
-  static getOrCreate<Msg = unknown>(
+  static create<Msg = unknown>(
     consume: ConsumeFunction<Msg>,
     opts: FilteringOptions<Msg>
   ): Subscription<Msg> {
-    const key = ++Subscription.lastId;
-    if (Subscription.uniqueSubscriptions.has(key)) {
-      return Subscription.uniqueSubscriptions.get(key)!;
-    }
-    const subscription = new Subscription<Msg>(
-      key,
+    return new Subscription<Msg>(
       consume,
       opts.strictTopicFiltering,
       opts.topicPattern,
       opts.contentFilter
     );
-    Subscription.uniqueSubscriptions.set(key, subscription);
-    return subscription;
-  }
-
-  /**
-   * Removes a subscription reference from the static map.
-   * @template Msg - Type of messages handled by the subscription
-   * @static
-   * @param {UniqueSubscriptionKey} key - The unique key identifying the subscription to remove
-   * @returns {boolean} true if a subscription was removed, false if it didn't exist
-   */
-  static unref(key: UniqueSubscriptionKey): boolean {
-    const existed = Subscription.uniqueSubscriptions.has(key);
-    if (existed) {
-      Subscription.uniqueSubscriptions.delete(key);
-    }
-    return existed;
   }
 }
