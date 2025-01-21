@@ -10,6 +10,7 @@ A lightweight (< 2kb), zero-deps, type-safe Pub/Sub library for TypeScript with 
 - ⚡ **Async support**: Handle both synchronous and asynchronous message consumers
 - 🔒 **Strict mode**: Optional strict topic filtering for more control
 - 🎨 **Flexible**: Combine topic and content filtering for precise message routing
+- 🔄 **Independent subscriptions**: Multiple identical subscriptions are allowed and managed independently
 
 ## Installation
 
@@ -127,12 +128,44 @@ await emit("Process me");
 console.log("All handlers completed");
 ```
 
+### Handling Duplicate Subscriptions
+
+```typescript
+const publisher = Publisher.create<string>();
+const options = {
+  topicPattern: "user",
+  strictTopicFiltering: true,
+};
+
+// Creating multiple subscriptions with identical parameters
+const unsubscribe1 = publisher.subscribe(
+  (msg) => console.log("Handler 1:", msg),
+  options
+);
+const unsubscribe2 = publisher.subscribe(
+  (msg) => console.log("Handler 2:", msg),
+  options
+);
+
+const emit = publisher.getEmitter();
+
+// Both handlers will receive the message
+emit("Hello", "user");
+// Output:
+// Handler 1: Hello
+// Handler 2: Hello
+
+// Each subscription is managed independently
+unsubscribe1(); // Only removes the first subscription
+// Now only Handler 2 will receive messages
+```
+
 ## API
 
 ### `Publisher<Msg>`
 
 - `create<Msg>()`: Creates a new publisher instance
-- `subscribe(consume, filteringOptions?)`: Subscribes to messages with optional filtering
+- `subscribe(consume, filteringOptions?)`: Subscribes to messages with optional filtering. Returns an unsubscribe function that removes only this specific subscription. Note that identical subscriptions are allowed and each will receive messages independently.
 - `getEmitter()`: Returns a function for emitting messages
 - `subscriptionsNumber`: Gets the current number of active subscriptions
 
