@@ -7,6 +7,14 @@
   },
   "homepage": "https://tongtwist.github.io/easypubsub/",
   "module": "src/index.ts",
+  "files": [
+    "dist"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "scripts": {
     "build": "bun run build:js && bun run build:types",
