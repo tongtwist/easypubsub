@@ -34,5 +34,6 @@
     "zero-dependency",
     "topic-filtering",
     "content-filtering"
-  ]
+  ],
+  "license": "MIT"
 }
